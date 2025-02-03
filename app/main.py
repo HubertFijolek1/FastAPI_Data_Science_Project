@@ -1,10 +1,11 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, WebSocket
 import pandas as pd
 import io
 import cv2
 import os
 
-from app import data_processing, predictive_analysis, image_video_recognition
+from app import (data_processing, predictive_analysis,
+                 image_video_recognition, nlp_module, real_time_analysis)
 
 app = FastAPI()
 
@@ -52,3 +53,23 @@ async def detect_faces_endpoint(file: UploadFile = File(...)):
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
+
+@app.post("/sentiment")
+async def sentiment_analysis_endpoint(text: str):
+    """
+    Analyze sentiment of the passed text.
+    """
+    scores = nlp_module.analyze_sentiment(text)
+    return scores
+
+@app.websocket("/ws/stream")
+async def websocket_stream(websocket: WebSocket):
+    """
+    Streams random integers via WebSocket.
+    """
+    await websocket.accept()
+    try:
+        async for value in real_time_analysis.stream_data():
+            await websocket.send_json({"value": value})
+    except:
+        await websocket.close()
